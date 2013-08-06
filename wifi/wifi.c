@@ -320,7 +320,7 @@ int wifi_load_driver()
     }
 
     if (strcmp(FIRMWARE_LOADER,"") == 0) {
-#ifdef WIFI_DRIVER_LOADER_DELAY
+#ifdef TARGET_BOARD_ORIGEN
         usleep(WIFI_DRIVER_LOADER_DELAY);
 #endif
         property_set(DRIVER_PROP_NAME, "ok");
