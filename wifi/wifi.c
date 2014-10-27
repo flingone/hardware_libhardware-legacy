@@ -56,6 +56,15 @@ static char primary_iface[PROPERTY_VALUE_MAX];
 // TODO: use new ANDROID_SOCKET mechanism, once support for multiple
 // sockets is in
 
+#ifndef WIFI_MTK
+#ifndef WIFI_DRIVER_MODULE_PATH
+#define WIFI_DRIVER_MODULE_PATH    "/system/lib/modules/esp8089.ko"
+#endif
+#endif
+#ifndef WIFI_DRIVER_MODULE_NAME
+#define WIFI_DRIVER_MODULE_NAME    "wlan"
+#endif
+
 #ifndef WIFI_DRIVER_MODULE_ARG
 #define WIFI_DRIVER_MODULE_ARG          ""
 #endif
@@ -93,6 +102,8 @@ static const char SUPPLICANT_NAME[]     = "wpa_supplicant";
 static const char SUPP_PROP_NAME[]      = "init.svc.wpa_supplicant";
 static const char P2P_SUPPLICANT_NAME[] = "p2p_supplicant";
 static const char P2P_PROP_NAME[]       = "init.svc.p2p_supplicant";
+static const char BCM_SUPPLICANT_NAME[] = "bcm_supplicant";
+static const char BCM_PROP_NAME[]       = "init.svc.bcm_supplicant";
 static const char SUPP_CONFIG_TEMPLATE[]= "/system/etc/wifi/wpa_supplicant.conf";
 static const char SUPP_CONFIG_FILE[]    = "/data/misc/wifi/wpa_supplicant.conf";
 static const char P2P_CONFIG_FILE[]     = "/data/misc/wifi/p2p_supplicant.conf";
@@ -213,13 +224,18 @@ int wifi_load_driver()
 {
 #ifdef WIFI_DRIVER_MODULE_PATH
     char driver_status[PROPERTY_VALUE_MAX];
-    int count = 100; /* wait at most 20 seconds for completion */
+    int count = 20; /* wait at most 20 seconds for completion */
 
-    if (is_wifi_driver_loaded()) {
+    if (check_wireless_ready()) {
         return 0;
     }
 
-    if (insmod(DRIVER_MODULE_PATH, DRIVER_MODULE_ARG) < 0)
+    //if (insmod(DRIVER_MODULE_PATH, DRIVER_MODULE_ARG) < 0)
+//#ifndef WIFI_ESP8089
+    if (rk_wifi_load_driver(1) < 0)
+//#else 
+  //  if (insmod(DRIVER_MODULE_PATH, DRIVER_MODULE_ARG) < 0)
+//#endif
         return -1;
 
     if (strcmp(FIRMWARE_LOADER,"") == 0) {
@@ -231,6 +247,7 @@ int wifi_load_driver()
     }
     sched_yield();
     while (count-- > 0) {
+/*
         if (property_get(DRIVER_PROP_NAME, driver_status, NULL)) {
             if (strcmp(driver_status, "ok") == 0)
                 return 0;
@@ -239,7 +256,12 @@ int wifi_load_driver()
                 return -1;
             }
         }
-        usleep(200000);
+*/
+        if (check_wireless_ready()) {
+           property_set(DRIVER_PROP_NAME, "ok");
+           return 0; 
+        }
+        usleep(500000);
     }
     property_set(DRIVER_PROP_NAME, "timeout");
     wifi_unload_driver();
@@ -254,10 +276,15 @@ int wifi_unload_driver()
 {
     usleep(200000); /* allow to finish interface down */
 #ifdef WIFI_DRIVER_MODULE_PATH
-    if (rmmod(DRIVER_MODULE_NAME) == 0) {
+    //if (rmmod(DRIVER_MODULE_NAME) == 0) {
+//#ifndef WIFI_ESP8089
+    if (rk_wifi_load_driver(0) == 0) {
+//#else
+  //  if (rmmod(DRIVER_MODULE_NAME) == 0) {
+//#endif
         int count = 20; /* wait at most 10 seconds for completion */
         while (count-- > 0) {
-            if (!is_wifi_driver_loaded())
+            if (!check_wireless_ready())
                 break;
             usleep(500000);
         }
@@ -478,8 +505,13 @@ int wifi_start_supplicant(int p2p_supported)
 #endif
 
     if (p2p_supported) {
-        strcpy(supplicant_name, P2P_SUPPLICANT_NAME);
-        strcpy(supplicant_prop_name, P2P_PROP_NAME);
+        if (get_kernel_version() == KERNEL_VERSION_3_10) {
+            strcpy(supplicant_name, BCM_SUPPLICANT_NAME);
+            strcpy(supplicant_prop_name, BCM_PROP_NAME);
+        } else {
+            strcpy(supplicant_name, P2P_SUPPLICANT_NAME);
+            strcpy(supplicant_prop_name, P2P_PROP_NAME);
+        }
 
         /* Ensure p2p config file is created */
         if (ensure_config_file_exists(P2P_CONFIG_FILE) < 0) {
@@ -563,8 +595,13 @@ int wifi_stop_supplicant(int p2p_supported)
     int count = 50; /* wait at most 5 seconds for completion */
 
     if (p2p_supported) {
-        strcpy(supplicant_name, P2P_SUPPLICANT_NAME);
-        strcpy(supplicant_prop_name, P2P_PROP_NAME);
+        if (get_kernel_version() == KERNEL_VERSION_3_10) {
+            strcpy(supplicant_name, BCM_SUPPLICANT_NAME);
+            strcpy(supplicant_prop_name, BCM_PROP_NAME);
+        } else {
+            strcpy(supplicant_name, P2P_SUPPLICANT_NAME);
+            strcpy(supplicant_prop_name, P2P_PROP_NAME);
+        }
     } else {
         strcpy(supplicant_name, SUPPLICANT_NAME);
         strcpy(supplicant_prop_name, SUPP_PROP_NAME);

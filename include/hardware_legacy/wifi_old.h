@@ -25,38 +25,28 @@ enum WIFI_CHIP_TYPE_LIST{
     RTL8188CU = 0,
     RTL8192CU,
     RTL8188EU,
+    RT3070,
+    BCM4329,
+    BCM4319,
+    BCM43x9,
     BCM4330,
     RK901,
     RK903,
-    AP6335,
-    AP6234,
-    AP6441,
+    OOB_RK901,
+    OOB_RK903,
+    RT5370,
     MT7601,
     RTL8723AS,
     RTL8723AU,
-    RTL8723BS,
-    RTL8723BU,
+    RTL8189ES,
     RTL8192DU,
     MT6620,
     ESP8089,
+    MT5931,
     NUM_MAX,
 };
 
-enum {
-    KERNEL_VERSION_3_0_8 = 1,
-    KERNEL_VERSION_3_0_36,
-    KERNEL_VERSION_3_10,
-};
-
 int check_wifi_chip_type(void);
-
-int rk_wifi_power_ctrl(int on);
-
-int rk_wifi_load_driver(int enable);
-
-int check_wireless_ready(void);
-
-int get_kernel_version(void);
 
 /**
  * Load the Wi-Fi driver.
@@ -88,6 +78,13 @@ int is_wifi_driver_loaded();
 int wifi_start_supplicant(int p2pSupported);
 
 /**
+ * Start supplicant for soft AP.
+ *
+ * @return 0 on success, < 0 on failure.
+ */
+int wifi_ap_start_supplicant();
+
+/**
  * Stop supplicant.
  *
  * @return 0 on success, < 0 on failure.
@@ -95,18 +92,26 @@ int wifi_start_supplicant(int p2pSupported);
 int wifi_stop_supplicant(int p2pSupported);
 
 /**
- * Open a connection to supplicant
+ * Stop supplicant for soft AP.
  *
  * @return 0 on success, < 0 on failure.
  */
-int wifi_connect_to_supplicant();
+int wifi_ap_stop_supplicant();
+
+/**
+ * Open a connection to supplicant on interface
+ *
+ * @return 0 on success, < 0 on failure.
+ */
+int wifi_connect_to_supplicant(const char *ifname);
 
 /**
  * Close connection to supplicant
  *
  * @return 0 on success, < 0 on failure.
  */
-void wifi_close_supplicant_connection();
+//void wifi_close_supplicant_connection();
+void wifi_close_supplicant_connection(const char *ifname);
 
 /**
  * wifi_wait_for_event() performs a blocking call to 
@@ -120,7 +125,8 @@ void wifi_close_supplicant_connection();
  * event (for instance, no connection), and less than 0
  * if there is an error.
  */
-int wifi_wait_for_event(char *buf, size_t len);
+//int wifi_wait_for_event(char *buf, size_t len);
+int wifi_wait_for_event(const char *ifname, char *buf, size_t buflen);
 
 /**
  * wifi_command() issues a command to the Wi-Fi driver.
@@ -141,7 +147,8 @@ int wifi_wait_for_event(char *buf, size_t len);
  *
  * @return 0 if successful, < 0 if an error.
  */
-int wifi_command(const char *command, char *reply, size_t *reply_len);
+//int wifi_command(const char *command, char *reply, size_t *reply_len);
+int wifi_command(const char *ifname, const char *command, char *reply, size_t *reply_len);
 
 /**
  * do_dhcp_request() issues a dhcp request and returns the acquired
